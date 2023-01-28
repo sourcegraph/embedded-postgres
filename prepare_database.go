@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -77,7 +76,7 @@ max_connections = 250
 
 func createPasswordFile(runtimePath, password string) (string, error) {
 	passwordFileLocation := filepath.Join(runtimePath, "pwfile")
-	if err := ioutil.WriteFile(passwordFileLocation, []byte(password), 0600); err != nil {
+	if err := os.WriteFile(passwordFileLocation, []byte(password), 0600); err != nil {
 		return "", fmt.Errorf("unable to write password file to %s", passwordFileLocation)
 	}
 
