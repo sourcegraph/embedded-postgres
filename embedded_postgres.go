@@ -219,7 +219,10 @@ func startPostgres(ep *EmbeddedPostgres) error {
 	}
 
 	if err := postgresProcess.Start(); err != nil {
-		return fmt.Errorf("could not start postgres using %s: %w", postgresProcess.String(), err)
+		_ = ep.syncedLogger.flush()
+		logContent, _ := readLogsOrTimeout(ep.syncedLogger.file)
+
+		return fmt.Errorf("could not start postgres using %s:\n%s", postgresProcess.String(), string(logContent))
 	}
 
 	waitErrC := make(chan error, 1)

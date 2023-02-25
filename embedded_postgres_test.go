@@ -226,12 +226,13 @@ func Test_ErrorWhenCannotStartPostgresProcess(t *testing.T) {
 	}
 
 	database.initDatabase = func(binaryExtractLocation, runtimePath, dataLocation, username, password, locale string, useUnixSocket string, logger *os.File) error {
+		_, _ = logger.Write([]byte("ah it did not work"))
 		return nil
 	}
 
 	err = database.Start()
 
-	assert.Contains(t, err.Error(), fmt.Sprintf(`could not start postgres using %s/bin/postgres -D %s/data -p 5432`, extractPath, extractPath))
+	assert.EqualError(t, err.Error(), fmt.Sprintf("could not start postgres using %s/bin/pg_ctl start -w -D %s/data -o \"-p 5432\":\nah it did not work", extractPath, extractPath))
 }
 
 func Test_CustomConfig(t *testing.T) {
