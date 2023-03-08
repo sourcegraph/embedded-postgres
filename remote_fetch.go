@@ -93,16 +93,16 @@ func decompressResponse(bodyBytes []byte, contentLength int64, cacheLocator Cach
 			}
 
 			cacheLocation, _ := cacheLocator()
-
-			if err := os.MkdirAll(filepath.Dir(cacheLocation), 0755); err != nil {
+			tempCacheLocation := cacheLocation + ".temp"
+			if err := os.MkdirAll(filepath.Dir(tempCacheLocation), 0755); err != nil {
 				return errorExtractingPostgres(err)
 			}
 
-			if err := ioutil.WriteFile(cacheLocation, archiveBytes, file.FileHeader.Mode()); err != nil {
+			if err := os.WriteFile(tempCacheLocation, archiveBytes, file.FileHeader.Mode()); err != nil {
 				return errorExtractingPostgres(err)
 			}
 
-			return nil
+			return os.Rename(tempCacheLocation, cacheLocation)
 		}
 	}
 

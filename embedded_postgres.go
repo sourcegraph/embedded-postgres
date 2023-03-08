@@ -106,7 +106,14 @@ func (ep *EmbeddedPostgres) Start() error {
 			}
 		}
 
-		if err := decompressTarXz(defaultTarReader, cacheLocation, ep.config.binariesPath); err != nil {
+		tempBinariesPath := ep.config.binariesPath + ".temp"
+		// Discard whatever we had previously
+		os.RemoveAll(tempBinariesPath)
+		if err := decompressTarXz(defaultTarReader, cacheLocation, tempBinariesPath); err != nil {
+			return err
+		}
+
+		if err := os.Rename(tempBinariesPath, ep.config.binariesPath); err != nil {
 			return err
 		}
 	}
