@@ -13,6 +13,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/fergusstrange/embedded-postgres/internal/fileutil"
 )
 
 // RemoteFetchStrategy provides a strategy to fetch a Postgres binary so that it is available for use.
@@ -94,6 +96,9 @@ func decompressResponse(bodyBytes []byte, contentLength int64, cacheLocator Cach
 
 			cacheLocation, _ := cacheLocator()
 			tempCacheLocation := cacheLocation + ".temp"
+			// Discard whatever we had previously and always clean up afterwards
+			os.RemoveAll(tempCacheLocation)
+			defer os.RemoveAll(tempCacheLocation)
 			if err := os.MkdirAll(filepath.Dir(tempCacheLocation), 0755); err != nil {
 				return errorExtractingPostgres(err)
 			}
@@ -102,7 +107,7 @@ func decompressResponse(bodyBytes []byte, contentLength int64, cacheLocator Cach
 				return errorExtractingPostgres(err)
 			}
 
-			return os.Rename(tempCacheLocation, cacheLocation)
+			return fileutil.RenameAndSync(tempCacheLocation, cacheLocation)
 		}
 	}
 

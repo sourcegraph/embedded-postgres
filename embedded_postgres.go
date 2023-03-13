@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/fergusstrange/embedded-postgres/internal/fileutil"
 )
 
 // EmbeddedPostgres maintains all configuration and runtime functions for maintaining the lifecycle of one Postgres process.
@@ -107,13 +109,14 @@ func (ep *EmbeddedPostgres) Start() error {
 		}
 
 		tempBinariesPath := ep.config.binariesPath + ".temp"
-		// Discard whatever we had previously
+		// Discard whatever we had previously and always clean up afterwards
 		os.RemoveAll(tempBinariesPath)
+		defer os.RemoveAll(tempBinariesPath)
 		if err := decompressTarXz(defaultTarReader, cacheLocation, tempBinariesPath); err != nil {
 			return err
 		}
 
-		if err := os.Rename(tempBinariesPath, ep.config.binariesPath); err != nil {
+		if err := fileutil.RenameAndSync(tempBinariesPath, ep.config.binariesPath); err != nil {
 			return err
 		}
 	}
