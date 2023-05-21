@@ -13,8 +13,12 @@ import (
 	"strings"
 	"time"
 
+	"sync"
+
 	"github.com/fergusstrange/embedded-postgres/internal/fileutil"
 )
+
+var mu sync.Mutex
 
 // EmbeddedPostgres maintains all configuration and runtime functions for maintaining the lifecycle of one Postgres process.
 type EmbeddedPostgres struct {
@@ -99,28 +103,11 @@ func (ep *EmbeddedPostgres) Start() error {
 		ep.config.binariesPath = ep.config.runtimePath
 	}
 
-	_, binDirErr := os.Stat(filepath.Join(ep.config.binariesPath, "bin"))
-	if os.IsNotExist(binDirErr) {
-		if !cacheExists {
-			if err := ep.remoteFetchStrategy(); err != nil {
-				return err
-			}
-		}
-
-		tempBinariesPath := ep.config.binariesPath + ".temp"
-		// Discard whatever we had previously and always clean up afterwards
-		os.RemoveAll(tempBinariesPath)
-		defer os.RemoveAll(tempBinariesPath)
-		if err := decompressTarXz(defaultTarReader, cacheLocation, tempBinariesPath); err != nil {
-			return err
-		}
-
-		if err := fileutil.RenameAndSync(tempBinariesPath, ep.config.binariesPath); err != nil {
-			return err
-		}
+	if err := ep.downloadAndExtractBinary(cacheExists, cacheLocation); err != nil {
+		return err
 	}
 
-	if err := os.MkdirAll(ep.config.runtimePath, 0755); err != nil {
+	if err := os.MkdirAll(ep.config.runtimePath, os.ModePerm); err != nil {
 		return fmt.Errorf("unable to create runtime directory %s with error: %s", ep.config.runtimePath, err)
 	}
 
@@ -166,6 +153,34 @@ func (ep *EmbeddedPostgres) Start() error {
 		return err
 	}
 
+	return nil
+}
+
+func (ep *EmbeddedPostgres) downloadAndExtractBinary(cacheExists bool, cacheLocation string) error {
+	// lock to prevent collisions with duplicate downloads
+	mu.Lock()
+	defer mu.Unlock()
+
+	_, binDirErr := os.Stat(filepath.Join(ep.config.binariesPath, "bin"))
+	if os.IsNotExist(binDirErr) {
+		if !cacheExists {
+			if err := ep.remoteFetchStrategy(); err != nil {
+				return err
+			}
+		}
+
+		tempBinariesPath := ep.config.binariesPath + ".temp"
+		// Discard whatever we had previously and always clean up afterwards
+		os.RemoveAll(tempBinariesPath)
+		defer os.RemoveAll(tempBinariesPath)
+		if err := decompressTarXz(defaultTarReader, cacheLocation, tempBinariesPath); err != nil {
+			return err
+		}
+
+		if err := fileutil.RenameAndSync(tempBinariesPath, ep.config.binariesPath); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
