@@ -14,8 +14,6 @@ import (
 	"time"
 
 	"sync"
-
-	"github.com/fergusstrange/embedded-postgres/internal/fileutil"
 )
 
 var mu sync.Mutex
@@ -169,15 +167,7 @@ func (ep *EmbeddedPostgres) downloadAndExtractBinary(cacheExists bool, cacheLoca
 			}
 		}
 
-		tempBinariesPath := ep.config.binariesPath + ".temp"
-		// Discard whatever we had previously and always clean up afterwards
-		os.RemoveAll(tempBinariesPath)
-		defer os.RemoveAll(tempBinariesPath)
-		if err := decompressTarXz(defaultTarReader, cacheLocation, tempBinariesPath); err != nil {
-			return err
-		}
-
-		if err := fileutil.RenameAndSync(tempBinariesPath, ep.config.binariesPath); err != nil {
+		if err := decompressTarXz(defaultTarReader, cacheLocation, ep.config.binariesPath); err != nil {
 			return err
 		}
 	}
