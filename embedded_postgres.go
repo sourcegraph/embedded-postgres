@@ -69,12 +69,6 @@ func (ep *EmbeddedPostgres) Start() error {
 		return errors.New("server is already started")
 	}
 
-	if ep.config.useUnixSocket == "" {
-		if err := ensurePortAvailable(ep.config.port); err != nil {
-			return err
-		}
-	}
-
 	logger, err := newSyncedLogger("", ep.config.logger)
 	if err != nil {
 		return errors.New("unable to create logger")
@@ -135,6 +129,13 @@ func (ep *EmbeddedPostgres) Start() error {
 
 	// In case it is already running, try to stop it.
 	_ = stopPostgres(ep)
+
+	if ep.config.useUnixSocket == "" {
+		if err := ensurePortAvailable(ep.config.port); err != nil {
+			return err
+		}
+	}
+
 	if err := startPostgres(ep); err != nil {
 		return err
 	}
